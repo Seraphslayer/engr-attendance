@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
@@ -10,7 +9,7 @@ const navItems = [
   { label: "Reports", path: "/reports", roles: ["admin"] },
 ];
 
-export default function Sidebar({ open, onClose }) {
+export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -22,68 +21,49 @@ export default function Sidebar({ open, onClose }) {
   const filtered = navItems.filter((item) => item.roles.includes(user?.role));
 
   return (
-    <>
-      {/* Overlay for mobile */}
-      {open && <div style={styles.overlay} onClick={onClose} />}
-
-      <div
-        style={{ ...styles.sidebar, transform: open ? "translateX(0)" : "" }}
-      >
-        <div style={styles.header}>
-          <h2 style={styles.title}>ENGR</h2>
-          <p style={styles.subtitle}>Attendance System</p>
-        </div>
-
-        <nav style={styles.nav}>
-          {filtered.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              onClick={onClose}
-              style={({ isActive }) => ({
-                ...styles.navItem,
-                backgroundColor: isActive ? "#2b6cb0" : "transparent",
-                color: isActive ? "#fff" : "#bee3f8",
-              })}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div style={styles.footer}>
-          <p style={styles.userInfo}>{user?.name}</p>
-          <p style={styles.userRole}>{user?.role?.toUpperCase()}</p>
-          <button style={styles.logoutBtn} onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
+    <div style={styles.sidebar}>
+      <div style={styles.header}>
+        <h2 style={styles.title}>ENGR</h2>
+        <p style={styles.subtitle}>Attendance System</p>
       </div>
-    </>
+
+      <nav style={styles.nav}>
+        {filtered.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            style={({ isActive }) => ({
+              ...styles.navItem,
+              backgroundColor: isActive ? "#2b6cb0" : "transparent",
+              color: isActive ? "#fff" : "#bee3f8",
+            })}
+          >
+            {item.label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <div style={styles.footer}>
+        <p style={styles.userInfo}>{user?.name}</p>
+        <p style={styles.userRole}>{user?.role?.toUpperCase()}</p>
+        <button style={styles.logoutBtn} onClick={handleLogout}>
+          Logout
+        </button>
+      </div>
+    </div>
   );
 }
 
 const styles = {
-  overlay: {
-    position: "fixed",
-    inset: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    zIndex: 99,
-  },
   sidebar: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    height: "100vh",
     width: "220px",
+    minHeight: "100vh",
     backgroundColor: "#2c5282",
     display: "flex",
     flexDirection: "column",
     padding: "1.5rem 1rem",
     boxSizing: "border-box",
-    zIndex: 100,
-    transform: "translateX(-100%)",
-    transition: "transform 0.25s ease",
+    flexShrink: 0,
   },
   header: {
     marginBottom: "2rem",

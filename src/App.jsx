@@ -10,7 +10,6 @@ import ProtectedRoute from "./auth/ProtectedRoute";
 import Sidebar from "./components/Sidebar";
 import LoginPage from "./pages/LoginPage";
 import QRCardPage from "./pages/QRCardPage";
-import ScanPage from "./pages/ScanPage";
 
 // Placeholder pages — we'll fill these in next
 import DashboardPage from "./pages/DashboardPage";
@@ -19,61 +18,23 @@ import EventsPage from "./pages/EventsPage";
 import AttendancePage from "./pages/AttendancePage";
 import ReportsPage from "./pages/ReportsPage";
 
-import { useState } from "react";
-
 function Layout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#f7fafc" }}>
-      {/* Top navbar for mobile */}
-      <div style={topbarStyles.bar}>
-        <button
-          style={topbarStyles.menuBtn}
-          onClick={() => setSidebarOpen(true)}
-        >
-          ☰
-        </button>
-        <span style={topbarStyles.title}>ENGR Attendance</span>
-      </div>
-
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      <main style={topbarStyles.main}>
+    <div style={{ display: "flex", minHeight: "100vh" }}>
+      <Sidebar />
+      <main
+        style={{
+          flex: 1,
+          padding: "2rem",
+          backgroundColor: "#f7fafc",
+          overflowY: "auto",
+        }}
+      >
         <Outlet />
       </main>
     </div>
   );
 }
-
-const topbarStyles = {
-  bar: {
-    position: "sticky",
-    top: 0,
-    zIndex: 50,
-    backgroundColor: "#2c5282",
-    padding: "0.75rem 1rem",
-    display: "flex",
-    alignItems: "center",
-    gap: "1rem",
-  },
-  menuBtn: {
-    background: "none",
-    border: "none",
-    color: "#fff",
-    fontSize: "1.5rem",
-    cursor: "pointer",
-    lineHeight: 1,
-  },
-  title: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: "1rem",
-  },
-  main: {
-    padding: "1.5rem 1rem",
-  },
-};
 
 export default function App() {
   return (
@@ -83,7 +44,6 @@ export default function App() {
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/qr/:token" element={<QRCardPage />} />
-          <Route path="/scan/:eventId" element={<ScanPage />} />
 
           {/* Protected routes with sidebar layout */}
           <Route
