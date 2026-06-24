@@ -224,6 +224,24 @@ export default function StudentsPage() {
             <p style={{ fontSize: "0.75rem", color: "#718096" }}>
               Student opens this QR on their phone to show to officers.
             </p>
+            <button
+              style={{
+                ...styles.addBtn,
+                backgroundColor: "#2c5282",
+                width: "100%",
+                marginBottom: "0.5rem",
+              }}
+              onClick={() => {
+                const canvas = qrCanvasRef.current;
+                if (!canvas) return;
+                const link = document.createElement("a");
+                link.download = `QR_${qrModal.studentId}_${qrModal.lastName}.png`;
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+              }}
+            >
+              ⬇ Download QR
+            </button>
             <button style={styles.addBtn} onClick={() => setQrModal(null)}>
               Close
             </button>

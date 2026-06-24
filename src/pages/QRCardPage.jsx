@@ -36,6 +36,74 @@ export default function QRCardPage() {
     }
   }, [student]);
 
+  function handleDownload() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Create a bigger canvas with student info printed on it
+    const padding = 24;
+    const infoHeight = 100;
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = canvas.width + padding * 2;
+    exportCanvas.height = canvas.height + infoHeight + padding * 2;
+
+    const ctx = exportCanvas.getContext("2d");
+
+    // Background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+    // Header bar
+    ctx.fillStyle = "#2c5282";
+    ctx.fillRect(0, 0, exportCanvas.width, 60);
+
+    // Header text
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 18px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("ENGR Attendance", exportCanvas.width / 2, 28);
+    ctx.font = "12px Arial";
+    ctx.fillStyle = "#bee3f8";
+    ctx.fillText("Engineering Department", exportCanvas.width / 2, 48);
+
+    // Student info
+    ctx.fillStyle = "#1a202c";
+    ctx.font = "bold 16px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(
+      `${student.lastName}, ${student.firstName}`,
+      exportCanvas.width / 2,
+      82,
+    );
+    ctx.font = "13px Arial";
+    ctx.fillStyle = "#4a5568";
+    ctx.fillText(
+      `${student.course} — Year ${student.yearLevel}`,
+      exportCanvas.width / 2,
+      100,
+    );
+    ctx.fillText(`ID: ${student.studentId}`, exportCanvas.width / 2, 118);
+
+    // QR code
+    ctx.drawImage(canvas, padding, 130);
+
+    // Footer
+    ctx.font = "11px Arial";
+    ctx.fillStyle = "#a0aec0";
+    ctx.textAlign = "center";
+    ctx.fillText(
+      "Show this QR code during attendance check.",
+      exportCanvas.width / 2,
+      exportCanvas.height - 10,
+    );
+
+    // Download
+    const link = document.createElement("a");
+    link.download = `QR_${student.studentId}_${student.lastName}.png`;
+    link.href = exportCanvas.toDataURL("image/png");
+    link.click();
+  }
+
   if (loading) return <div style={styles.center}>Loading...</div>;
   if (error)
     return <div style={styles.center}>Invalid or expired QR link.</div>;
@@ -63,6 +131,13 @@ export default function QRCardPage() {
         {/* QR Code */}
         <div style={styles.qrWrapper}>
           <canvas ref={canvasRef} style={styles.qrCanvas} />
+        </div>
+
+        {/* Download Button */}
+        <div style={styles.downloadWrapper}>
+          <button style={styles.downloadBtn} onClick={handleDownload}>
+            ⬇ Download QR as Image
+          </button>
         </div>
 
         {/* Footer */}
@@ -136,10 +211,26 @@ const styles = {
   qrWrapper: {
     display: "flex",
     justifyContent: "center",
-    padding: "1.5rem",
+    padding: "1.5rem 1.5rem 0.5rem",
   },
   qrCanvas: {
     borderRadius: "8px",
+  },
+  downloadWrapper: {
+    display: "flex",
+    justifyContent: "center",
+    padding: "0.75rem 1.5rem",
+  },
+  downloadBtn: {
+    padding: "0.65rem 1.5rem",
+    borderRadius: "8px",
+    border: "none",
+    backgroundColor: "#2c5282",
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: "0.9rem",
+    cursor: "pointer",
+    width: "100%",
   },
   footer: {
     backgroundColor: "#f7fafc",
