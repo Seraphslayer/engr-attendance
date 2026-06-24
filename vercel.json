@@ -1,6 +1,11 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/api/auth/(.*)", "destination": "/api/auth" },
+    { "source": "/api/students/(.*)", "destination": "/api/students" },
+    { "source": "/api/events/(.*)", "destination": "/api/events" },
+    { "source": "/api/attendance/(.*)", "destination": "/api/attendance" },
+    { "source": "/api/dashboard", "destination": "/api/dashboard" },
+    { "source": "/api/qr/(.*)", "destination": "/api/qr" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
