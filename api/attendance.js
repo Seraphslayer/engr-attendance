@@ -6,7 +6,10 @@ export default async function handler(req, res) {
   setCors(res);
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const user = authenticate(req, res);
+  const isScan = req.query.scan === "1";
+  const user = isScan
+    ? { id: "scanner", name: "QR Scanner" }
+    : authenticate(req, res);
   if (!user) return;
 
   const db = await getDb();

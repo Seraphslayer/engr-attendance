@@ -8,6 +8,7 @@ export default function EventsPage() {
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editEvent, setEditEvent] = useState(null);
+  const [copyMsg, setCopyMsg] = useState("");
 
   async function fetchEvents() {
     setLoading(true);
@@ -41,6 +42,13 @@ export default function EventsPage() {
       headers: { Authorization: `Bearer ${token}` },
     });
     fetchEvents();
+  }
+
+  function handleCopyScanLink(eventId) {
+    const link = `${window.location.origin}/scan/${eventId}`;
+    navigator.clipboard.writeText(link);
+    setCopyMsg(eventId);
+    setTimeout(() => setCopyMsg(""), 2000);
   }
 
   return (
@@ -89,6 +97,12 @@ export default function EventsPage() {
                 <td style={styles.td}>{e.description || "—"}</td>
                 <td style={styles.td}>{e.createdByName}</td>
                 <td style={styles.td}>
+                  <button
+                    style={styles.btnScan}
+                    onClick={() => handleCopyScanLink(e._id)}
+                  >
+                    {copyMsg === e._id ? "Copied!" : "Copy Scan Link"}
+                  </button>
                   <button
                     style={styles.btnEdit}
                     onClick={() => {
@@ -252,6 +266,16 @@ const styles = {
     fontWeight: "600",
     cursor: "pointer",
     fontSize: "0.9rem",
+  },
+  btnScan: {
+    padding: "0.3rem 0.6rem",
+    borderRadius: "6px",
+    border: "none",
+    backgroundColor: "#38a169",
+    color: "#fff",
+    cursor: "pointer",
+    fontSize: "0.8rem",
+    marginRight: "0.4rem",
   },
   btnEdit: {
     padding: "0.3rem 0.6rem",
