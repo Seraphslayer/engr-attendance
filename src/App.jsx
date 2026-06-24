@@ -10,8 +10,8 @@ import ProtectedRoute from "./auth/ProtectedRoute";
 import Sidebar from "./components/Sidebar";
 import LoginPage from "./pages/LoginPage";
 import QRCardPage from "./pages/QRCardPage";
+import ScanPage from "./pages/ScanPage";
 
-// Placeholder pages — we'll fill these in next
 import DashboardPage from "./pages/DashboardPage";
 import StudentsPage from "./pages/StudentsPage";
 import EventsPage from "./pages/EventsPage";
@@ -44,6 +44,7 @@ export default function App() {
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/qr/:token" element={<QRCardPage />} />
+          <Route path="/scan/:eventId" element={<ScanPage />} />
 
           {/* Protected routes with sidebar layout */}
           <Route
