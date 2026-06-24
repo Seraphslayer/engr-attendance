@@ -1,5 +1,6 @@
 import { getDb } from "./lib/mongodb.js";
 import { authenticate, setCors } from "./lib/middleware.js";
+import { ObjectId } from "mongodb";
 
 export default async function handler(req, res) {
   setCors(res);
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
       .limit(5)
       .toArray();
 
-    // Attendance count per event (last 5 events)
+    // Attendance count per event
     const eventIds = recentEvents.map((e) => e._id.toString());
     const attendanceCounts = await db
       .collection("attendance")
@@ -67,13 +68,10 @@ export default async function handler(req, res) {
         .find({ eventId: latestEventId })
         .toArray();
 
-      const studentIds = latestRecords.map((r) => r.studentId);
+      const studentIds = latestRecords.map((r) => new ObjectId(r.studentId));
       const students = await db
         .collection("students")
-        .find({ _id: { $in: studentIds.map((id) => { 
-          const { ObjectId } = await import("mongodb");
-          return new ObjectId(id);
-        }) } })
+        .find({ _id: { $in: studentIds } })
         .toArray();
 
       const courseCounts = {};
@@ -81,10 +79,12 @@ export default async function handler(req, res) {
         courseCounts[s.course] = (courseCounts[s.course] || 0) + 1;
       });
 
-      attendanceByCourse = Object.entries(courseCounts).map(([course, count]) => ({
-        course,
-        count,
-      }));
+      attendanceByCourse = Object.entries(courseCounts).map(
+        ([course, count]) => ({
+          course,
+          count,
+        }),
+      );
     }
 
     return res.status(200).json({
