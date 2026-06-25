@@ -94,6 +94,9 @@ export default function StudentsPage() {
 
   return (
     <div>
+      {/* Registration QR */}
+      <RegistrationQR />
+
       <div style={styles.topBar}>
         <h1 style={styles.heading}>Students</h1>
         <div style={styles.actions}>
@@ -248,6 +251,41 @@ export default function StudentsPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function RegistrationQR() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      const url = `${window.location.origin}/register`;
+      QRCode.toCanvas(canvasRef.current, url, { width: 140, margin: 1 });
+    }
+  }, []);
+
+  return (
+    <div style={regStyles.box}>
+      <div style={regStyles.left}>
+        <canvas ref={canvasRef} style={{ borderRadius: "8px" }} />
+      </div>
+      <div style={regStyles.right}>
+        <p style={regStyles.title}>Student Self-Registration</p>
+        <p style={regStyles.desc}>
+          Students can scan this QR code to register themselves into the system.
+          Print it and post it on your bulletin board.
+        </p>
+        <button
+          style={regStyles.btn}
+          onClick={() => {
+            navigator.clipboard.writeText(`${window.location.origin}/register`);
+            alert("Registration link copied!");
+          }}
+        >
+          Copy Link
+        </button>
+      </div>
     </div>
   );
 }
@@ -530,4 +568,42 @@ const styles = {
     margin: 0,
   },
   qrSub: { fontSize: "0.875rem", color: "#718096", margin: "0.25rem 0 0" },
+};
+
+const regStyles = {
+  box: {
+    backgroundColor: "#fff",
+    borderRadius: "12px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+    padding: "1.25rem",
+    display: "flex",
+    gap: "1.25rem",
+    alignItems: "center",
+    marginBottom: "1.5rem",
+    flexWrap: "wrap",
+  },
+  left: { flexShrink: 0 },
+  right: { flex: 1, minWidth: "180px" },
+  title: {
+    fontWeight: "700",
+    fontSize: "1rem",
+    color: "#1a202c",
+    margin: "0 0 0.4rem",
+  },
+  desc: {
+    fontSize: "0.85rem",
+    color: "#718096",
+    margin: "0 0 0.75rem",
+    lineHeight: 1.5,
+  },
+  btn: {
+    padding: "0.5rem 1.1rem",
+    borderRadius: "8px",
+    border: "1px solid #2c5282",
+    color: "#2c5282",
+    backgroundColor: "#fff",
+    fontWeight: "600",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+  },
 };

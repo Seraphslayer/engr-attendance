@@ -7,8 +7,14 @@ export default async function handler(req, res) {
   setCors(res);
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const user = authenticate(req, res);
-  if (!user) return;
+  const isPublicRegister =
+    req.method === "POST" && !req.query.action && !req.headers.authorization;
+
+  let user = null;
+  if (!isPublicRegister) {
+    user = authenticate(req, res);
+    if (!user) return;
+  }
 
   const db = await getDb();
   const action = req.query.action;
@@ -56,9 +62,9 @@ export default async function handler(req, res) {
     }
   }
 
-  // POST /api/students — register one student (admin only)
+  // POST /api/students — register one student (public or admin)
   if (req.method === "POST" && !action) {
-    if (!requireRole(res, user, "admin")) return;
+    if (!isPublicRegister && !requireRole(res, user, "admin")) return;
     try {
       const { studentId, firstName, lastName, course, yearLevel, email } =
         req.body;
@@ -109,7 +115,6 @@ export default async function handler(req, res) {
         createdAt: new Date(),
       }));
 
-      // Skip duplicates
       const existingIds = await db
         .collection("students")
         .find({ studentId: { $in: docs.map((d) => d.studentId) } })
@@ -138,20 +143,18 @@ export default async function handler(req, res) {
     if (!requireRole(res, user, "admin")) return;
     try {
       const { firstName, lastName, course, yearLevel, email } = req.body;
-      await db
-        .collection("students")
-        .updateOne(
-          { _id: new ObjectId(id) },
-          {
-            $set: {
-              firstName,
-              lastName,
-              course,
-              yearLevel: parseInt(yearLevel),
-              email,
-            },
+      await db.collection("students").updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $set: {
+            firstName,
+            lastName,
+            course,
+            yearLevel: parseInt(yearLevel),
+            email,
           },
-        );
+        },
+      );
       return res.status(200).json({ success: true });
     } catch (err) {
       console.error(err);
