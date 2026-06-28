@@ -49,31 +49,37 @@ export default function RegisterPage() {
     return (
       <div style={styles.wrapper}>
         <div style={styles.card}>
-          <div style={styles.successIcon}>✅</div>
-          <h2 style={styles.successTitle}>Registered!</h2>
-          <p style={styles.successText}>
-            You have been successfully registered in the Engineering Attendance
-            System.
-          </p>
-          <p style={styles.successHint}>
-            Your QR code will be available from your officer or admin.
-          </p>
-          <button
-            style={styles.btn}
-            onClick={() => {
-              setSuccess(false);
-              setForm({
-                studentId: "",
-                firstName: "",
-                lastName: "",
-                course: "CoE",
-                yearLevel: 1,
-                email: "",
-              });
-            }}
-          >
-            Register Another
-          </button>
+          <div style={styles.header}>
+            <p style={styles.headerLabel}>Engineering Department</p>
+            <h1 style={styles.headerTitle}>Student Registration</h1>
+          </div>
+          <div style={styles.successBody}>
+            <div style={styles.successIcon}>✅</div>
+            <h2 style={styles.successTitle}>Registered!</h2>
+            <p style={styles.successText}>
+              You have been successfully registered in the Engineering
+              Attendance System.
+            </p>
+            <p style={styles.successHint}>
+              Your QR code will be available from your officer or admin.
+            </p>
+            <button
+              style={styles.btn}
+              onClick={() => {
+                setSuccess(false);
+                setForm({
+                  studentId: "",
+                  firstName: "",
+                  lastName: "",
+                  course: "CoE",
+                  yearLevel: 1,
+                  email: "",
+                });
+              }}
+            >
+              Register Another
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -242,6 +248,33 @@ const styles = {
     flexDirection: "column",
     gap: "1rem",
   },
+  successBody: {
+    padding: "2rem 1.5rem",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    textAlign: "center",
+    gap: "0.75rem",
+  },
+  successIcon: {
+    fontSize: "3rem",
+  },
+  successTitle: {
+    fontSize: "1.5rem",
+    fontWeight: "700",
+    color: "#276749",
+    margin: 0,
+  },
+  successText: {
+    fontSize: "0.95rem",
+    color: "#4a5568",
+    margin: 0,
+  },
+  successHint: {
+    fontSize: "0.85rem",
+    color: "#a0aec0",
+    margin: 0,
+  },
   row: {
     display: "flex",
     gap: "0.75rem",
@@ -284,6 +317,7 @@ const styles = {
     fontSize: "1rem",
     cursor: "pointer",
     marginTop: "0.5rem",
+    width: "100%",
   },
   errorBox: {
     backgroundColor: "#fff5f5",
@@ -298,29 +332,5 @@ const styles = {
     color: "#a0aec0",
     textAlign: "center",
     margin: 0,
-  },
-  successIcon: {
-    fontSize: "3rem",
-    textAlign: "center",
-    marginTop: "2rem",
-  },
-  successTitle: {
-    fontSize: "1.5rem",
-    fontWeight: "700",
-    color: "#276749",
-    textAlign: "center",
-    margin: "0.5rem 0",
-  },
-  successText: {
-    fontSize: "0.95rem",
-    color: "#4a5568",
-    textAlign: "center",
-    margin: "0 1.5rem",
-  },
-  successHint: {
-    fontSize: "0.85rem",
-    color: "#a0aec0",
-    textAlign: "center",
-    margin: "0.5rem 1.5rem 1.5rem",
   },
 };
