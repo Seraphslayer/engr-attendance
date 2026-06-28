@@ -4,6 +4,8 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
+const COURSES = ["All Courses", "CoE", "IE", "EE"];
+
 export default function ReportsPage() {
   const { token } = useAuth();
   const [events, setEvents] = useState([]);
@@ -12,6 +14,7 @@ export default function ReportsPage() {
   const [eventInfo, setEventInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [courseFilter, setCourseFilter] = useState("All Courses");
 
   useEffect(() => {
     fetchEvents();
@@ -49,6 +52,21 @@ export default function ReportsPage() {
     }
   }
 
+  // Filtered records based on selected course
+  const filteredRecords =
+    courseFilter === "All Courses"
+      ? records
+      : records.filter((r) => r.student?.course === courseFilter);
+
+  // Summary by course (always from all records)
+  const courseSummary = records.reduce((acc, r) => {
+    const course = r.student?.course || "Unknown";
+    acc[course] = (acc[course] || 0) + 1;
+    return acc;
+  }, {});
+
+  const exportLabel = courseFilter === "All Courses" ? "" : `_${courseFilter}`;
+
   function exportPDF() {
     const doc = new jsPDF();
     doc.setFontSize(16);
@@ -64,12 +82,13 @@ export default function ReportsPage() {
       14,
       30,
     );
-    doc.text(`Total Present: ${records.length}`, 14, 36);
+    doc.text(`Course: ${courseFilter}`, 14, 36);
+    doc.text(`Total Present: ${filteredRecords.length}`, 14, 42);
 
     autoTable(doc, {
-      startY: 42,
+      startY: 48,
       head: [["#", "Student ID", "Name", "Course", "Year", "Method", "Time"]],
-      body: records.map((r, i) => [
+      body: filteredRecords.map((r, i) => [
         i + 1,
         r.student?.studentId || "—",
         r.student ? `${r.student.lastName}, ${r.student.firstName}` : "Unknown",
@@ -85,60 +104,126 @@ export default function ReportsPage() {
       headStyles: { fillColor: [44, 82, 130] },
     });
 
-    doc.save(`attendance_${eventInfo?.name || "report"}.pdf`);
+    doc.save(`attendance_${eventInfo?.name || "report"}${exportLabel}.pdf`);
   }
 
   function exportExcel() {
-    const rows = records.map((r, i) => ({
-      "#": i + 1,
-      "Student ID": r.student?.studentId || "—",
-      "Last Name": r.student?.lastName || "Unknown",
-      "First Name": r.student?.firstName || "Unknown",
-      Course: r.student?.course || "—",
-      "Year Level": r.student?.yearLevel || "—",
-      Method: r.method === "qr" ? "QR" : "Manual",
-      Time: new Date(r.timestamp).toLocaleTimeString("en-PH", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    }));
+    if (courseFilter === "All Courses") {
+      // Export all courses each on their own sheet
+      const wb = XLSX.utils.book_new();
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-    XLSX.writeFile(wb, `attendance_${eventInfo?.name || "report"}.xlsx`);
+      ["CoE", "IE", "EE"].forEach((course) => {
+        const courseRecords = records.filter(
+          (r) => r.student?.course === course,
+        );
+        if (courseRecords.length === 0) return;
+        const rows = courseRecords.map((r, i) => ({
+          "#": i + 1,
+          "Student ID": r.student?.studentId || "—",
+          "Last Name": r.student?.lastName || "Unknown",
+          "First Name": r.student?.firstName || "Unknown",
+          Course: r.student?.course || "—",
+          "Year Level": r.student?.yearLevel || "—",
+          Method: r.method === "qr" ? "QR" : "Manual",
+          Time: new Date(r.timestamp).toLocaleTimeString("en-PH", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, course);
+      });
+
+      // Also add an All sheet
+      const allRows = records.map((r, i) => ({
+        "#": i + 1,
+        "Student ID": r.student?.studentId || "—",
+        "Last Name": r.student?.lastName || "Unknown",
+        "First Name": r.student?.firstName || "Unknown",
+        Course: r.student?.course || "—",
+        "Year Level": r.student?.yearLevel || "—",
+        Method: r.method === "qr" ? "QR" : "Manual",
+        Time: new Date(r.timestamp).toLocaleTimeString("en-PH", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      }));
+      const wsAll = XLSX.utils.json_to_sheet(allRows);
+      XLSX.utils.book_append_sheet(wb, wsAll, "All");
+
+      XLSX.writeFile(
+        wb,
+        `attendance_${eventInfo?.name || "report"}_all_courses.xlsx`,
+      );
+    } else {
+      // Export only the selected course
+      const rows = filteredRecords.map((r, i) => ({
+        "#": i + 1,
+        "Student ID": r.student?.studentId || "—",
+        "Last Name": r.student?.lastName || "Unknown",
+        "First Name": r.student?.firstName || "Unknown",
+        Course: r.student?.course || "—",
+        "Year Level": r.student?.yearLevel || "—",
+        Method: r.method === "qr" ? "QR" : "Manual",
+        Time: new Date(r.timestamp).toLocaleTimeString("en-PH", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, courseFilter);
+      XLSX.writeFile(
+        wb,
+        `attendance_${eventInfo?.name || "report"}_${courseFilter}.xlsx`,
+      );
+    }
   }
-
-  // Summary by course
-  const courseSummary = records.reduce((acc, r) => {
-    const course = r.student?.course || "Unknown";
-    acc[course] = (acc[course] || 0) + 1;
-    return acc;
-  }, {});
 
   return (
     <div>
       <h1 style={styles.heading}>Reports</h1>
 
-      {/* Event Selector */}
-      <div style={styles.eventRow}>
-        <label style={styles.label}>Select Event:</label>
-        <select
-          style={styles.select}
-          value={selectedEvent}
-          onChange={(e) => setSelectedEvent(e.target.value)}
-        >
-          {events.map((e) => (
-            <option key={e._id} value={e._id}>
-              {e.name} —{" "}
-              {new Date(e.date).toLocaleDateString("en-PH", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })}
-            </option>
-          ))}
-        </select>
+      {/* Filters Row */}
+      <div style={styles.filterRow}>
+        <div style={styles.filterGroup}>
+          <label style={styles.label}>Event:</label>
+          <select
+            style={styles.select}
+            value={selectedEvent}
+            onChange={(e) => setSelectedEvent(e.target.value)}
+          >
+            {events.map((e) => (
+              <option key={e._id} value={e._id}>
+                {e.name} —{" "}
+                {new Date(e.date).toLocaleDateString("en-PH", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div style={styles.filterGroup}>
+          <label style={styles.label}>Course:</label>
+          <div style={styles.courseButtons}>
+            {COURSES.map((c) => (
+              <button
+                key={c}
+                style={{
+                  ...styles.courseBtn,
+                  backgroundColor: courseFilter === c ? "#2c5282" : "#fff",
+                  color: courseFilter === c ? "#fff" : "#2c5282",
+                }}
+                onClick={() => setCourseFilter(c)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {error && <div style={styles.errorBox}>{error}</div>}
@@ -149,33 +234,65 @@ export default function ReportsPage() {
         <>
           {/* Summary Cards */}
           <div style={styles.cardRow}>
-            <div style={styles.statCard}>
+            <div style={{ ...styles.statCard, borderTop: "4px solid #3182ce" }}>
               <p style={styles.statValue}>{records.length}</p>
               <p style={styles.statLabel}>Total Present</p>
             </div>
             {Object.entries(courseSummary).map(([course, count]) => (
-              <div key={course} style={styles.statCard}>
+              <div
+                key={course}
+                style={{
+                  ...styles.statCard,
+                  borderTop: `4px solid ${
+                    course === "CoE"
+                      ? "#805ad5"
+                      : course === "IE"
+                        ? "#38a169"
+                        : "#dd6b20"
+                  }`,
+                  opacity:
+                    courseFilter === "All Courses" || courseFilter === course
+                      ? 1
+                      : 0.4,
+                }}
+              >
                 <p style={styles.statValue}>{count}</p>
                 <p style={styles.statLabel}>{course}</p>
               </div>
             ))}
           </div>
 
+          {/* Filtered count */}
+          {courseFilter !== "All Courses" && (
+            <p style={styles.filterNote}>
+              Showing <strong>{filteredRecords.length}</strong> records for{" "}
+              <strong>{courseFilter}</strong>
+            </p>
+          )}
+
           {/* Export Buttons */}
-          {records.length > 0 && (
+          {filteredRecords.length > 0 && (
             <div style={styles.exportRow}>
               <button style={styles.pdfBtn} onClick={exportPDF}>
-                Export PDF
+                Export PDF{" "}
+                {courseFilter !== "All Courses" ? `(${courseFilter})` : ""}
               </button>
               <button style={styles.xlsxBtn} onClick={exportExcel}>
-                Export Excel
+                Export Excel{" "}
+                {courseFilter === "All Courses"
+                  ? "(All — separate sheets)"
+                  : `(${courseFilter})`}
               </button>
             </div>
           )}
 
           {/* Table */}
-          {records.length === 0 ? (
-            <p style={styles.empty}>No attendance records for this event.</p>
+          {filteredRecords.length === 0 ? (
+            <p style={styles.empty}>
+              {records.length === 0
+                ? "No attendance records for this event."
+                : `No ${courseFilter} students present for this event.`}
+            </p>
           ) : (
             <table style={styles.table}>
               <thead>
@@ -190,7 +307,7 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {records.map((r, i) => (
+                {filteredRecords.map((r, i) => (
                   <tr key={r._id}>
                     <td style={styles.td}>{i + 1}</td>
                     <td style={styles.td}>{r.student?.studentId || "—"}</td>
@@ -236,24 +353,45 @@ const styles = {
     color: "#1a202c",
     marginBottom: "1.5rem",
   },
-  eventRow: {
+  filterRow: {
     display: "flex",
-    alignItems: "center",
+    flexDirection: "column",
     gap: "1rem",
     marginBottom: "1.25rem",
   },
-  label: { fontSize: "0.9rem", fontWeight: "600", color: "#4a5568" },
+  filterGroup: {
+    display: "flex",
+    alignItems: "center",
+    gap: "1rem",
+    flexWrap: "wrap",
+  },
+  label: {
+    fontSize: "0.9rem",
+    fontWeight: "600",
+    color: "#4a5568",
+    whiteSpace: "nowrap",
+  },
   select: {
     padding: "0.6rem 1rem",
     borderRadius: "8px",
     border: "1px solid #e2e8f0",
     fontSize: "0.95rem",
   },
+  courseButtons: { display: "flex", gap: "0.5rem", flexWrap: "wrap" },
+  courseBtn: {
+    padding: "0.45rem 1rem",
+    borderRadius: "8px",
+    border: "1px solid #2c5282",
+    fontWeight: "600",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+    transition: "all 0.15s",
+  },
   cardRow: {
     display: "flex",
     gap: "1rem",
     flexWrap: "wrap",
-    marginBottom: "1.5rem",
+    marginBottom: "1rem",
   },
   statCard: {
     backgroundColor: "#fff",
@@ -262,7 +400,7 @@ const styles = {
     boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
     minWidth: "120px",
     flex: 1,
-    borderTop: "4px solid #3182ce",
+    transition: "opacity 0.2s",
   },
   statValue: {
     fontSize: "2rem",
@@ -271,7 +409,13 @@ const styles = {
     margin: 0,
   },
   statLabel: { fontSize: "0.85rem", color: "#718096", margin: "0.25rem 0 0" },
-  exportRow: { display: "flex", gap: "0.75rem", marginBottom: "1.25rem" },
+  filterNote: { fontSize: "0.9rem", color: "#4a5568", marginBottom: "1rem" },
+  exportRow: {
+    display: "flex",
+    gap: "0.75rem",
+    marginBottom: "1.25rem",
+    flexWrap: "wrap",
+  },
   pdfBtn: {
     padding: "0.6rem 1.25rem",
     borderRadius: "8px",
