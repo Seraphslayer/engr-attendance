@@ -3,8 +3,10 @@ import { useAuth } from "../auth/AuthContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import { generateSections } from "../utils/sections";
 
 const COURSES = ["All Courses", "CoE", "IE", "EE"];
+const sections = generateSections();
 
 export default function ReportsPage() {
   const { token } = useAuth();
@@ -15,6 +17,7 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [courseFilter, setCourseFilter] = useState("All Courses");
+  const [sectionFilter, setSectionFilter] = useState("");
 
   useEffect(() => {
     fetchEvents();
@@ -52,11 +55,13 @@ export default function ReportsPage() {
     }
   }
 
-  // Filtered records based on selected course
-  const filteredRecords =
-    courseFilter === "All Courses"
-      ? records
-      : records.filter((r) => r.student?.course === courseFilter);
+  // Apply both course and section filters
+  const filteredRecords = records.filter((r) => {
+    const courseMatch =
+      courseFilter === "All Courses" || r.student?.course === courseFilter;
+    const sectionMatch = !sectionFilter || r.student?.section === sectionFilter;
+    return courseMatch && sectionMatch;
+  });
 
   // Summary by course (always from all records)
   const courseSummary = records.reduce((acc, r) => {
@@ -65,7 +70,29 @@ export default function ReportsPage() {
     return acc;
   }, {});
 
-  const exportLabel = courseFilter === "All Courses" ? "" : `_${courseFilter}`;
+  const fileLabel = [
+    eventInfo?.name || "report",
+    courseFilter !== "All Courses" ? courseFilter : "",
+    sectionFilter || "",
+  ]
+    .filter(Boolean)
+    .join("_");
+
+  function buildRows(data) {
+    return data.map((r, i) => [
+      i + 1,
+      r.student?.studentId || "—",
+      r.student ? `${r.student.lastName}, ${r.student.firstName}` : "Unknown",
+      r.student?.course || "—",
+      r.student?.yearLevel || "—",
+      r.student?.section || "—",
+      r.method === "qr" ? "QR" : "Manual",
+      new Date(r.timestamp).toLocaleTimeString("en-PH", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    ]);
+  }
 
   function exportPDF() {
     const doc = new jsPDF();
@@ -83,35 +110,36 @@ export default function ReportsPage() {
       30,
     );
     doc.text(`Course: ${courseFilter}`, 14, 36);
-    doc.text(`Total Present: ${filteredRecords.length}`, 14, 42);
+    doc.text(`Section: ${sectionFilter || "All"}`, 14, 42);
+    doc.text(`Total Present: ${filteredRecords.length}`, 14, 48);
 
     autoTable(doc, {
-      startY: 48,
-      head: [["#", "Student ID", "Name", "Course", "Year", "Method", "Time"]],
-      body: filteredRecords.map((r, i) => [
-        i + 1,
-        r.student?.studentId || "—",
-        r.student ? `${r.student.lastName}, ${r.student.firstName}` : "Unknown",
-        r.student?.course || "—",
-        r.student?.yearLevel || "—",
-        r.method === "qr" ? "QR" : "Manual",
-        new Date(r.timestamp).toLocaleTimeString("en-PH", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      ]),
+      startY: 54,
+      head: [
+        [
+          "#",
+          "Student ID",
+          "Name",
+          "Course",
+          "Year",
+          "Section",
+          "Method",
+          "Time",
+        ],
+      ],
+      body: buildRows(filteredRecords),
       styles: { fontSize: 9 },
       headStyles: { fillColor: [44, 82, 130] },
     });
 
-    doc.save(`attendance_${eventInfo?.name || "report"}${exportLabel}.pdf`);
+    doc.save(`attendance_${fileLabel}.pdf`);
   }
 
   function exportExcel() {
-    if (courseFilter === "All Courses") {
-      // Export all courses each on their own sheet
-      const wb = XLSX.utils.book_new();
+    const wb = XLSX.utils.book_new();
 
+    if (courseFilter === "All Courses" && !sectionFilter) {
+      // Export each course on its own sheet + All sheet
       ["CoE", "IE", "EE"].forEach((course) => {
         const courseRecords = records.filter(
           (r) => r.student?.course === course,
@@ -124,6 +152,7 @@ export default function ReportsPage() {
           "First Name": r.student?.firstName || "Unknown",
           Course: r.student?.course || "—",
           "Year Level": r.student?.yearLevel || "—",
+          Section: r.student?.section || "—",
           Method: r.method === "qr" ? "QR" : "Manual",
           Time: new Date(r.timestamp).toLocaleTimeString("en-PH", {
             hour: "2-digit",
@@ -134,7 +163,7 @@ export default function ReportsPage() {
         XLSX.utils.book_append_sheet(wb, ws, course);
       });
 
-      // Also add an All sheet
+      // All sheet
       const allRows = records.map((r, i) => ({
         "#": i + 1,
         "Student ID": r.student?.studentId || "—",
@@ -142,6 +171,7 @@ export default function ReportsPage() {
         "First Name": r.student?.firstName || "Unknown",
         Course: r.student?.course || "—",
         "Year Level": r.student?.yearLevel || "—",
+        Section: r.student?.section || "—",
         Method: r.method === "qr" ? "QR" : "Manual",
         Time: new Date(r.timestamp).toLocaleTimeString("en-PH", {
           hour: "2-digit",
@@ -150,13 +180,8 @@ export default function ReportsPage() {
       }));
       const wsAll = XLSX.utils.json_to_sheet(allRows);
       XLSX.utils.book_append_sheet(wb, wsAll, "All");
-
-      XLSX.writeFile(
-        wb,
-        `attendance_${eventInfo?.name || "report"}_all_courses.xlsx`,
-      );
     } else {
-      // Export only the selected course
+      // Export only filtered records
       const rows = filteredRecords.map((r, i) => ({
         "#": i + 1,
         "Student ID": r.student?.studentId || "—",
@@ -164,6 +189,7 @@ export default function ReportsPage() {
         "First Name": r.student?.firstName || "Unknown",
         Course: r.student?.course || "—",
         "Year Level": r.student?.yearLevel || "—",
+        Section: r.student?.section || "—",
         Method: r.method === "qr" ? "QR" : "Manual",
         Time: new Date(r.timestamp).toLocaleTimeString("en-PH", {
           hour: "2-digit",
@@ -171,21 +197,24 @@ export default function ReportsPage() {
         }),
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, courseFilter);
-      XLSX.writeFile(
-        wb,
-        `attendance_${eventInfo?.name || "report"}_${courseFilter}.xlsx`,
-      );
+      const sheetName = [
+        courseFilter !== "All Courses" ? courseFilter : "All",
+        sectionFilter,
+      ]
+        .filter(Boolean)
+        .join("-");
+      XLSX.utils.book_append_sheet(wb, ws, sheetName || "Attendance");
     }
+
+    XLSX.writeFile(wb, `attendance_${fileLabel}.xlsx`);
   }
 
   return (
     <div>
       <h1 style={styles.heading}>Reports</h1>
 
-      {/* Filters Row */}
-      <div style={styles.filterRow}>
+      {/* Filters */}
+      <div style={styles.filterBlock}>
         <div style={styles.filterGroup}>
           <label style={styles.label}>Event:</label>
           <select
@@ -224,6 +253,22 @@ export default function ReportsPage() {
             ))}
           </div>
         </div>
+
+        <div style={styles.filterGroup}>
+          <label style={styles.label}>Section:</label>
+          <select
+            style={styles.select}
+            value={sectionFilter}
+            onChange={(e) => setSectionFilter(e.target.value)}
+          >
+            <option value="">All Sections</option>
+            {sections.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {error && <div style={styles.errorBox}>{error}</div>}
@@ -260,13 +305,32 @@ export default function ReportsPage() {
                 <p style={styles.statLabel}>{course}</p>
               </div>
             ))}
+            {filteredRecords.length !== records.length && (
+              <div
+                style={{ ...styles.statCard, borderTop: "4px solid #718096" }}
+              >
+                <p style={styles.statValue}>{filteredRecords.length}</p>
+                <p style={styles.statLabel}>Filtered</p>
+              </div>
+            )}
           </div>
 
-          {/* Filtered count */}
-          {courseFilter !== "All Courses" && (
+          {/* Active filter note */}
+          {(courseFilter !== "All Courses" || sectionFilter) && (
             <p style={styles.filterNote}>
-              Showing <strong>{filteredRecords.length}</strong> records for{" "}
-              <strong>{courseFilter}</strong>
+              Showing <strong>{filteredRecords.length}</strong> records
+              {courseFilter !== "All Courses" && (
+                <>
+                  {" "}
+                  for <strong>{courseFilter}</strong>
+                </>
+              )}
+              {sectionFilter && (
+                <>
+                  {" "}
+                  — Section <strong>{sectionFilter}</strong>
+                </>
+              )}
             </p>
           )}
 
@@ -274,14 +338,13 @@ export default function ReportsPage() {
           {filteredRecords.length > 0 && (
             <div style={styles.exportRow}>
               <button style={styles.pdfBtn} onClick={exportPDF}>
-                Export PDF{" "}
-                {courseFilter !== "All Courses" ? `(${courseFilter})` : ""}
+                Export PDF
               </button>
               <button style={styles.xlsxBtn} onClick={exportExcel}>
                 Export Excel{" "}
-                {courseFilter === "All Courses"
+                {courseFilter === "All Courses" && !sectionFilter
                   ? "(All — separate sheets)"
-                  : `(${courseFilter})`}
+                  : ""}
               </button>
             </div>
           )}
@@ -291,7 +354,7 @@ export default function ReportsPage() {
             <p style={styles.empty}>
               {records.length === 0
                 ? "No attendance records for this event."
-                : `No ${courseFilter} students present for this event.`}
+                : "No records match the selected filters."}
             </p>
           ) : (
             <table style={styles.table}>
@@ -302,6 +365,7 @@ export default function ReportsPage() {
                   <th style={styles.th}>Name</th>
                   <th style={styles.th}>Course</th>
                   <th style={styles.th}>Year</th>
+                  <th style={styles.th}>Section</th>
                   <th style={styles.th}>Method</th>
                   <th style={styles.th}>Time</th>
                 </tr>
@@ -318,6 +382,7 @@ export default function ReportsPage() {
                     </td>
                     <td style={styles.td}>{r.student?.course || "—"}</td>
                     <td style={styles.td}>{r.student?.yearLevel || "—"}</td>
+                    <td style={styles.td}>{r.student?.section || "—"}</td>
                     <td style={styles.td}>
                       <span
                         style={
@@ -353,7 +418,7 @@ const styles = {
     color: "#1a202c",
     marginBottom: "1.5rem",
   },
-  filterRow: {
+  filterBlock: {
     display: "flex",
     flexDirection: "column",
     gap: "1rem",

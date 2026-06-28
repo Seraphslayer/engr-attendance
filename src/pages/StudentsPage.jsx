@@ -2,6 +2,9 @@ import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../auth/AuthContext";
 import * as XLSX from "xlsx";
 import QRCode from "qrcode";
+import { generateSections, parseSectionLabel } from "../utils/sections";
+
+const sections = generateSections();
 
 export default function StudentsPage() {
   const { token } = useAuth();
@@ -10,6 +13,7 @@ export default function StudentsPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [courseFilter, setCourseFilter] = useState("");
+  const [sectionFilter, setSectionFilter] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editStudent, setEditStudent] = useState(null);
   const [qrModal, setQrModal] = useState(null);
@@ -23,6 +27,7 @@ export default function StudentsPage() {
       const params = new URLSearchParams();
       if (search) params.append("search", search);
       if (courseFilter) params.append("course", courseFilter);
+      if (sectionFilter) params.append("section", sectionFilter);
       const res = await fetch(`/api/students?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -38,7 +43,7 @@ export default function StudentsPage() {
 
   useEffect(() => {
     fetchStudents();
-  }, [search, courseFilter]);
+  }, [search, courseFilter, sectionFilter]);
 
   async function handleDelete(id) {
     if (!confirm("Delete this student?")) return;
@@ -63,6 +68,7 @@ export default function StudentsPage() {
         lastName: r["Last Name"],
         course: r["Course"],
         yearLevel: r["Year Level"],
+        section: r["Section"] || "",
         email: r["Email"] || "",
       }));
       const res = await fetch("/api/students?action=import", {
@@ -94,7 +100,6 @@ export default function StudentsPage() {
 
   return (
     <div>
-      {/* Registration QR */}
       <RegistrationQR />
 
       <div style={styles.topBar}>
@@ -141,6 +146,18 @@ export default function StudentsPage() {
             </option>
           ))}
         </select>
+        <select
+          style={styles.select}
+          value={sectionFilter}
+          onChange={(e) => setSectionFilter(e.target.value)}
+        >
+          <option value="">All Sections</option>
+          {sections.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Table */}
@@ -158,6 +175,7 @@ export default function StudentsPage() {
               <th style={styles.th}>Name</th>
               <th style={styles.th}>Course</th>
               <th style={styles.th}>Year</th>
+              <th style={styles.th}>Section</th>
               <th style={styles.th}>Email</th>
               <th style={styles.th}>Actions</th>
             </tr>
@@ -171,6 +189,7 @@ export default function StudentsPage() {
                 </td>
                 <td style={styles.td}>{s.course}</td>
                 <td style={styles.td}>{s.yearLevel}</td>
+                <td style={styles.td}>{s.section || "—"}</td>
                 <td style={styles.td}>{s.email || "—"}</td>
                 <td style={styles.td}>
                   <button style={styles.btnQr} onClick={() => openQR(s)}>
@@ -198,7 +217,6 @@ export default function StudentsPage() {
         </table>
       )}
 
-      {/* Add/Edit Modal */}
       {showModal && (
         <StudentModal
           token={token}
@@ -212,7 +230,6 @@ export default function StudentsPage() {
         />
       )}
 
-      {/* QR Modal */}
       {qrModal && (
         <div style={styles.overlay} onClick={() => setQrModal(null)}>
           <div style={styles.qrBox} onClick={(e) => e.stopPropagation()}>
@@ -220,7 +237,8 @@ export default function StudentsPage() {
               {qrModal.firstName} {qrModal.lastName}
             </h2>
             <p style={styles.qrSub}>
-              {qrModal.course} — Year {qrModal.yearLevel}
+              {qrModal.course} — Year {qrModal.yearLevel} —{" "}
+              {qrModal.section || "No section"}
             </p>
             <p style={styles.qrSub}>ID: {qrModal.studentId}</p>
             <canvas ref={qrCanvasRef} style={{ margin: "1rem 0" }} />
@@ -297,6 +315,7 @@ function StudentModal({ token, student, courses, onClose, onSaved }) {
     lastName: student?.lastName || "",
     course: student?.course || "CoE",
     yearLevel: student?.yearLevel || 1,
+    section: student?.section || sections[0],
     email: student?.email || "",
   });
   const [error, setError] = useState("");
@@ -333,6 +352,7 @@ function StudentModal({ token, student, courses, onClose, onSaved }) {
           {student ? "Edit Student" : "Add Student"}
         </h2>
         {error && <div style={styles.errorBox}>{error}</div>}
+
         {[
           {
             label: "Student ID",
@@ -358,6 +378,7 @@ function StudentModal({ token, student, courses, onClose, onSaved }) {
             />
           </div>
         ))}
+
         <div style={styles.fieldGroup}>
           <label style={styles.label}>Course</label>
           <select
@@ -372,6 +393,7 @@ function StudentModal({ token, student, courses, onClose, onSaved }) {
             ))}
           </select>
         </div>
+
         <div style={styles.fieldGroup}>
           <label style={styles.label}>Year Level</label>
           <select
@@ -388,6 +410,22 @@ function StudentModal({ token, student, courses, onClose, onSaved }) {
             ))}
           </select>
         </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Section</label>
+          <select
+            style={styles.input}
+            value={form.section}
+            onChange={(e) => setForm({ ...form, section: e.target.value })}
+          >
+            {sections.map((s) => (
+              <option key={s} value={s}>
+                {parseSectionLabel(s)}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div style={styles.modalActions}>
           <button style={styles.cancelBtn} onClick={onClose}>
             Cancel
@@ -410,13 +448,19 @@ const styles = {
   },
   heading: { fontSize: "1.75rem", fontWeight: "700", color: "#1a202c" },
   actions: { display: "flex", gap: "0.75rem" },
-  filterRow: { display: "flex", gap: "1rem", marginBottom: "1.25rem" },
+  filterRow: {
+    display: "flex",
+    gap: "1rem",
+    marginBottom: "1.25rem",
+    flexWrap: "wrap",
+  },
   searchInput: {
     flex: 1,
     padding: "0.6rem 1rem",
     borderRadius: "8px",
     border: "1px solid #e2e8f0",
     fontSize: "0.95rem",
+    minWidth: "180px",
   },
   select: {
     padding: "0.6rem 1rem",
@@ -514,6 +558,8 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: "0.75rem",
+    maxHeight: "90vh",
+    overflowY: "auto",
   },
   modalTitle: {
     fontSize: "1.25rem",

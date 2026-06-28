@@ -23,10 +23,11 @@ export default async function handler(req, res) {
   // GET /api/students — list all with optional filters
   if (req.method === "GET" && !action && !id) {
     try {
-      const { course, year, search } = req.query;
+      const { course, year, search, section } = req.query;
       const filter = {};
       if (course) filter.course = course;
       if (year) filter.yearLevel = parseInt(year);
+      if (section) filter.section = section;
       if (search) {
         filter.$or = [
           { firstName: { $regex: search, $options: "i" } },
@@ -66,9 +67,23 @@ export default async function handler(req, res) {
   if (req.method === "POST" && !action) {
     if (!isPublicRegister && !requireRole(res, user, "admin")) return;
     try {
-      const { studentId, firstName, lastName, course, yearLevel, email } =
-        req.body;
-      if (!studentId || !firstName || !lastName || !course || !yearLevel)
+      const {
+        studentId,
+        firstName,
+        lastName,
+        course,
+        yearLevel,
+        email,
+        section,
+      } = req.body;
+      if (
+        !studentId ||
+        !firstName ||
+        !lastName ||
+        !course ||
+        !yearLevel ||
+        !section
+      )
         return res.status(400).json({ error: "Missing required fields" });
 
       const existing = await db.collection("students").findOne({ studentId });
@@ -82,6 +97,7 @@ export default async function handler(req, res) {
         lastName,
         course,
         yearLevel: parseInt(yearLevel),
+        section,
         email: email || "",
         qrToken,
         createdAt: new Date(),
@@ -110,6 +126,7 @@ export default async function handler(req, res) {
         lastName: s.lastName,
         course: s.course,
         yearLevel: parseInt(s.yearLevel),
+        section: s.section || "",
         email: s.email || "",
         qrToken: uuidv4(),
         createdAt: new Date(),
@@ -142,7 +159,8 @@ export default async function handler(req, res) {
   if (req.method === "PATCH" && id) {
     if (!requireRole(res, user, "admin")) return;
     try {
-      const { firstName, lastName, course, yearLevel, email } = req.body;
+      const { firstName, lastName, course, yearLevel, email, section } =
+        req.body;
       await db.collection("students").updateOne(
         { _id: new ObjectId(id) },
         {
@@ -151,6 +169,7 @@ export default async function handler(req, res) {
             lastName,
             course,
             yearLevel: parseInt(yearLevel),
+            section: section || "",
             email,
           },
         },

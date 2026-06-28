@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { generateSections, parseSectionLabel } from "../utils/sections";
 
 const courses = ["CoE", "IE", "EE"];
+const sections = generateSections();
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -9,6 +11,7 @@ export default function RegisterPage() {
     lastName: "",
     course: "CoE",
     yearLevel: 1,
+    section: sections[0],
     email: "",
   });
   const [error, setError] = useState("");
@@ -22,7 +25,8 @@ export default function RegisterPage() {
       !form.firstName ||
       !form.lastName ||
       !form.course ||
-      !form.yearLevel
+      !form.yearLevel ||
+      !form.section
     ) {
       setError("Please fill in all required fields.");
       return;
@@ -73,6 +77,7 @@ export default function RegisterPage() {
                   lastName: "",
                   course: "CoE",
                   yearLevel: 1,
+                  section: sections[0],
                   email: "",
                 });
               }}
@@ -88,7 +93,6 @@ export default function RegisterPage() {
   return (
     <div style={styles.wrapper}>
       <div style={styles.card}>
-        {/* Header */}
         <div style={styles.header}>
           <p style={styles.headerLabel}>Engineering Department</p>
           <h1 style={styles.headerTitle}>Student Registration</h1>
@@ -189,6 +193,27 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>
+              Section <span style={styles.required}>*</span>
+            </label>
+            <select
+              style={styles.input}
+              value={form.section}
+              onChange={(e) => setForm({ ...form, section: e.target.value })}
+            >
+              {sections.map((s) => (
+                <option key={s} value={s}>
+                  {parseSectionLabel(s)}
+                </option>
+              ))}
+            </select>
+            <p style={styles.sectionHint}>
+              Format: [Year][Sem][M/A][Section#] — e.g. 11M1 = Year 1, Sem 1,
+              Morning, Section 1
+            </p>
+          </div>
+
           <button
             style={{ ...styles.btn, opacity: saving ? 0.7 : 1 }}
             onClick={handleSubmit}
@@ -256,49 +281,25 @@ const styles = {
     textAlign: "center",
     gap: "0.75rem",
   },
-  successIcon: {
-    fontSize: "3rem",
-  },
+  successIcon: { fontSize: "3rem" },
   successTitle: {
     fontSize: "1.5rem",
     fontWeight: "700",
     color: "#276749",
     margin: 0,
   },
-  successText: {
-    fontSize: "0.95rem",
-    color: "#4a5568",
-    margin: 0,
-  },
-  successHint: {
-    fontSize: "0.85rem",
-    color: "#a0aec0",
-    margin: 0,
-  },
-  row: {
-    display: "flex",
-    gap: "0.75rem",
-  },
+  successText: { fontSize: "0.95rem", color: "#4a5568", margin: 0 },
+  successHint: { fontSize: "0.85rem", color: "#a0aec0", margin: 0 },
+  row: { display: "flex", gap: "0.75rem" },
   fieldGroup: {
     display: "flex",
     flexDirection: "column",
     gap: "0.3rem",
     flex: 1,
   },
-  label: {
-    fontSize: "0.85rem",
-    fontWeight: "600",
-    color: "#4a5568",
-  },
-  required: {
-    color: "#e53e3e",
-    marginLeft: "2px",
-  },
-  optional: {
-    color: "#a0aec0",
-    fontWeight: "400",
-    fontSize: "0.8rem",
-  },
+  label: { fontSize: "0.85rem", fontWeight: "600", color: "#4a5568" },
+  required: { color: "#e53e3e", marginLeft: "2px" },
+  optional: { color: "#a0aec0", fontWeight: "400", fontSize: "0.8rem" },
   input: {
     padding: "0.65rem 0.9rem",
     borderRadius: "8px",
@@ -306,6 +307,11 @@ const styles = {
     fontSize: "0.95rem",
     width: "100%",
     boxSizing: "border-box",
+  },
+  sectionHint: {
+    fontSize: "0.75rem",
+    color: "#a0aec0",
+    margin: "0.25rem 0 0",
   },
   btn: {
     padding: "0.75rem",
