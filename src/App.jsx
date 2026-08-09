@@ -12,6 +12,7 @@ import LoginPage from "./pages/LoginPage";
 import QRCardPage from "./pages/QRCardPage";
 import ScanPage from "./pages/ScanPage";
 import RegisterPage from "./pages/RegisterPage";
+import CheckinPage from "./pages/CheckinPage";
 
 import DashboardPage from "./pages/DashboardPage";
 import StudentsPage from "./pages/StudentsPage";
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="/qr/:token" element={<QRCardPage />} />
           <Route path="/scan/:eventId" element={<ScanPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/checkin/:eventId" element={<CheckinPage />} />
 
           {/* Protected routes with sidebar layout */}
           <Route

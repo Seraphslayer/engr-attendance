@@ -7,8 +7,14 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
 
   const isScan = req.query.scan === "1";
-  const user = isScan
-    ? { id: "scanner", name: "QR Scanner" }
+  const isCheckin = req.query.checkin === "1";
+  const isPublic = isScan || isCheckin;
+
+  const user = isPublic
+    ? {
+        id: isScan ? "scanner" : "self-checkin",
+        name: isScan ? "QR Scanner" : "Self Check-in",
+      }
     : authenticate(req, res);
   if (!user) return;
 
@@ -25,7 +31,6 @@ export default async function handler(req, res) {
         .sort({ timestamp: 1 })
         .toArray();
 
-      // Enrich with student info
       const studentIds = records.map((r) => r.studentId);
       const students = await db
         .collection("students")
@@ -50,7 +55,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // POST /api/attendance — mark attendance (QR or manual)
+  // POST /api/attendance — mark attendance (QR scan, manual, or self check-in)
   if (req.method === "POST") {
     try {
       const { eventId, studentId, method } = req.body;
@@ -62,7 +67,6 @@ export default async function handler(req, res) {
 
       let student;
 
-      // QR scan — find student by qrToken
       if (req.body.qrToken) {
         student = await db
           .collection("students")
@@ -76,7 +80,6 @@ export default async function handler(req, res) {
           return res.status(404).json({ error: "Student not found" });
       }
 
-      // Check if already marked
       const existing = await db.collection("attendance").findOne({
         eventId,
         studentId: student._id.toString(),
@@ -91,16 +94,19 @@ export default async function handler(req, res) {
           },
         });
 
-      // Check event exists
       const event = await db
         .collection("events")
         .findOne({ _id: new ObjectId(eventId) });
       if (!event) return res.status(404).json({ error: "Event not found" });
 
+      let finalMethod = method || "manual";
+      if (isCheckin) finalMethod = "self-checkin";
+      else if (isScan) finalMethod = "qr";
+
       await db.collection("attendance").insertOne({
         eventId,
         studentId: student._id.toString(),
-        method: method || "manual",
+        method: finalMethod,
         markedBy: user.id,
         markedByName: user.name,
         timestamp: new Date(),
@@ -112,6 +118,7 @@ export default async function handler(req, res) {
           name: `${student.firstName} ${student.lastName}`,
           course: student.course,
           yearLevel: student.yearLevel,
+          section: student.section,
         },
       });
     } catch (err) {

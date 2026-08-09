@@ -7,18 +7,57 @@ export default async function handler(req, res) {
   setCors(res);
   if (req.method === "OPTIONS") return res.status(200).end();
 
+  const action = req.query.action;
+  const id = req.query.id;
+
   const isPublicRegister =
-    req.method === "POST" && !req.query.action && !req.headers.authorization;
+    req.method === "POST" && !action && !req.headers.authorization;
+  const isPublicLookup = req.method === "GET" && action === "lookup";
 
   let user = null;
-  if (!isPublicRegister) {
+  if (!isPublicRegister && !isPublicLookup) {
     user = authenticate(req, res);
     if (!user) return;
   }
 
   const db = await getDb();
-  const action = req.query.action;
-  const id = req.query.id;
+
+  // GET /api/students?action=lookup&search=xxx — public, limited fields for check-in
+  if (isPublicLookup) {
+    try {
+      const { search } = req.query;
+      if (!search || search.length < 2) return res.status(200).json([]);
+
+      const filter = {
+        $or: [
+          { firstName: { $regex: search, $options: "i" } },
+          { lastName: { $regex: search, $options: "i" } },
+          { studentId: { $regex: search, $options: "i" } },
+        ],
+      };
+
+      const students = await db
+        .collection("students")
+        .find(filter)
+        .project({
+          studentId: 1,
+          firstName: 1,
+          lastName: 1,
+          course: 1,
+          yearLevel: 1,
+          section: 1,
+        })
+        .limit(10)
+        .toArray();
+
+      return res
+        .status(200)
+        .json(students.map((s) => ({ ...s, _id: s._id.toString() })));
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  }
 
   // GET /api/students — list all with optional filters
   if (req.method === "GET" && !action && !id) {

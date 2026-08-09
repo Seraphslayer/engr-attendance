@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../auth/AuthContext";
+import QRCode from "qrcode";
 
 export default function EventsPage() {
   const { token, user } = useAuth();
@@ -9,6 +10,8 @@ export default function EventsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editEvent, setEditEvent] = useState(null);
   const [copyMsg, setCopyMsg] = useState("");
+  const [qrEvent, setQrEvent] = useState(null);
+  const qrCanvasRef = useRef(null);
 
   async function fetchEvents() {
     setLoading(true);
@@ -30,6 +33,13 @@ export default function EventsPage() {
     fetchEvents();
   }, []);
 
+  useEffect(() => {
+    if (qrEvent && qrCanvasRef.current) {
+      const url = `${window.location.origin}/checkin/${qrEvent._id}`;
+      QRCode.toCanvas(qrCanvasRef.current, url, { width: 220, margin: 2 });
+    }
+  }, [qrEvent]);
+
   async function handleDelete(id) {
     if (
       !confirm(
@@ -47,8 +57,24 @@ export default function EventsPage() {
   function handleCopyScanLink(eventId) {
     const link = `${window.location.origin}/scan/${eventId}`;
     navigator.clipboard.writeText(link);
-    setCopyMsg(eventId);
+    setCopyMsg(eventId + "-scan");
     setTimeout(() => setCopyMsg(""), 2000);
+  }
+
+  function handleCopyCheckinLink(eventId) {
+    const link = `${window.location.origin}/checkin/${eventId}`;
+    navigator.clipboard.writeText(link);
+    setCopyMsg(eventId + "-checkin");
+    setTimeout(() => setCopyMsg(""), 2000);
+  }
+
+  function downloadQR() {
+    const canvas = qrCanvasRef.current;
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = `checkin_QR_${qrEvent.name}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
   }
 
   return (
@@ -98,10 +124,16 @@ export default function EventsPage() {
                 <td style={styles.td}>{e.createdByName}</td>
                 <td style={styles.td}>
                   <button
+                    style={styles.btnCheckinQr}
+                    onClick={() => setQrEvent(e)}
+                  >
+                    Check-in QR
+                  </button>
+                  <button
                     style={styles.btnScan}
                     onClick={() => handleCopyScanLink(e._id)}
                   >
-                    {copyMsg === e._id ? "Copied!" : "Copy Scan Link"}
+                    {copyMsg === e._id + "-scan" ? "Copied!" : "Copy Scan Link"}
                   </button>
                   <button
                     style={styles.btnEdit}
@@ -137,6 +169,53 @@ export default function EventsPage() {
             fetchEvents();
           }}
         />
+      )}
+
+      {/* Check-in QR Modal */}
+      {qrEvent && (
+        <div style={styles.overlay} onClick={() => setQrEvent(null)}>
+          <div style={styles.qrBox} onClick={(e) => e.stopPropagation()}>
+            <h2 style={styles.qrTitle}>{qrEvent.name}</h2>
+            <p style={styles.qrSub}>
+              {new Date(qrEvent.date).toLocaleDateString("en-PH", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </p>
+            <canvas ref={qrCanvasRef} style={{ margin: "1rem 0" }} />
+            <p style={styles.qrHint}>
+              Students scan this to check in themselves for this event.
+            </p>
+            <button
+              style={{
+                ...styles.addBtn,
+                backgroundColor: "#2c5282",
+                width: "100%",
+                marginBottom: "0.5rem",
+              }}
+              onClick={downloadQR}
+            >
+              ⬇ Download QR
+            </button>
+            <button
+              style={{
+                ...styles.addBtn,
+                backgroundColor: "#38a169",
+                width: "100%",
+                marginBottom: "0.5rem",
+              }}
+              onClick={() => handleCopyCheckinLink(qrEvent._id)}
+            >
+              {copyMsg === qrEvent._id + "-checkin"
+                ? "Copied!"
+                : "Copy Check-in Link"}
+            </button>
+            <button style={styles.addBtn} onClick={() => setQrEvent(null)}>
+              Close
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -277,6 +356,16 @@ const styles = {
     fontSize: "0.8rem",
     marginRight: "0.4rem",
   },
+  btnCheckinQr: {
+    padding: "0.3rem 0.6rem",
+    borderRadius: "6px",
+    border: "none",
+    backgroundColor: "#805ad5",
+    color: "#fff",
+    cursor: "pointer",
+    fontSize: "0.8rem",
+    marginRight: "0.4rem",
+  },
   btnEdit: {
     padding: "0.3rem 0.6rem",
     borderRadius: "6px",
@@ -351,5 +440,27 @@ const styles = {
     borderRadius: "8px",
     fontSize: "0.875rem",
     border: "1px solid #fed7d7",
+  },
+  qrBox: {
+    backgroundColor: "#fff",
+    borderRadius: "12px",
+    padding: "2rem",
+    textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+  },
+  qrTitle: {
+    fontSize: "1.25rem",
+    fontWeight: "700",
+    color: "#1a202c",
+    margin: 0,
+  },
+  qrSub: { fontSize: "0.875rem", color: "#718096", margin: "0.25rem 0 0" },
+  qrHint: {
+    fontSize: "0.78rem",
+    color: "#a0aec0",
+    margin: "0 0 1rem",
+    textAlign: "center",
   },
 };

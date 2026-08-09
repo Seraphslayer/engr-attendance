@@ -6,8 +6,9 @@ export default async function handler(req, res) {
   setCors(res);
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const user = authenticate(req, res);
-  if (!user) return;
+  const isPublicEventLookup = req.method === "GET" && req.query.id;
+  const user = isPublicEventLookup ? null : authenticate(req, res);
+  if (!isPublicEventLookup && !user) return;
 
   const db = await getDb();
   const id = req.query.id;
@@ -70,18 +71,16 @@ export default async function handler(req, res) {
   if (req.method === "PATCH" && id) {
     try {
       const { name, date, description } = req.body;
-      await db
-        .collection("events")
-        .updateOne(
-          { _id: new ObjectId(id) },
-          {
-            $set: {
-              name,
-              date: new Date(date),
-              description: description || "",
-            },
+      await db.collection("events").updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $set: {
+            name,
+            date: new Date(date),
+            description: description || "",
           },
-        );
+        },
+      );
       return res.status(200).json({ success: true });
     } catch (err) {
       console.error(err);
