@@ -101,9 +101,9 @@ Default seeded accounts:
 
 | Email | Password | Role |
 |---|---|---|
-| admin@engr.edu.ph | Admin@1234 | admin |
-| officer1@engr.edu.ph | Officer@1234 | officer |
-| officer2@engr.edu.ph | Officer@1234 | officer |
+| admin@engr.edu.ph | ***** | admin |
+| officer1@engr.edu.ph | ***** | officer |
+| officer2@engr.edu.ph | ***** | officer |
 
 **⚠️ Change these passwords before real deployment**, or add new accounts and delete the defaults directly in MongoDB Atlas (`users` collection).
 
